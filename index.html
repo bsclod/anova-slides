@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light only">
+<title>Analysis of Variance as Model Comparison: sample slides</title>
+<style>
+  html, body { margin: 0; background: #F4F3EF; color: #1F1E1D; font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; }
+  main { max-width: 1280px; margin: 0 auto; padding: 24px 20px 32px; }
+  h1 { font-size: 22px; font-weight: 500; margin: 0 0 4px; }
+  .sub { font-size: 14px; color: #5F5E5A; margin: 0 0 16px; }
+  #stage { position: relative; background: #FFFFFF; border-radius: 10px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.12); cursor: pointer; }
+  #stage:fullscreen { border-radius: 0; background: #000; display: flex; align-items: center; justify-content: center; }
+  video { display: block; width: 100%; height: auto; }
+  #stage:fullscreen video { width: 100%; height: 100%; object-fit: contain; }
+  .bar { display: flex; align-items: center; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
+  button { font: inherit; font-size: 15px; background: #FFFFFF; color: #1F1E1D; border: 1px solid #C9C7BE; border-radius: 8px; padding: 9px 16px; cursor: pointer; min-height: 44px; }
+  button:hover { background: #ECEAE4; }
+  button.primary { background: #1F1E1D; color: #FFFFFF; border-color: #1F1E1D; }
+  button.primary:hover { background: #3D3D3A; }
+  button:focus-visible { outline: 3px solid #378ADD; outline-offset: 2px; }
+  .count { font-size: 14px; color: #5F5E5A; margin-left: auto; font-variant-numeric: tabular-nums; }
+  .track { height: 4px; background: #DDDBD3; border-radius: 2px; margin-top: 12px; overflow: hidden; }
+  .fill { height: 100%; width: 0; background: #1F1E1D; transition: width 0.2s; }
+  .hint { font-size: 13px; color: #888780; margin-top: 10px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Analysis of Variance as Model Comparison</h1>
+  <p class="sub">Sample lecture slides by Ben Sclodnick. Click through at your own pace; each click plays the next animation, as in a live lecture.</p>
+
+  <div id="stage" title="Click to advance">
+    <video id="v" src="slides.mp4" preload="auto" playsinline muted></video>
+  </div>
+
+  <div class="bar">
+    <button id="back" aria-label="Previous step">← Back</button>
+    <button id="next" class="primary" aria-label="Next step">Next →</button>
+    <button id="restart">Restart</button>
+    <button id="fs">Full screen</button>
+    <span class="count" id="count"></span>
+  </div>
+  <div class="track"><div class="fill" id="fill"></div></div>
+  <p class="hint">Keyboard: → or space for next, ← for back, F for full screen. Clicking the slide also advances.</p>
+</main>
+
+<script>
+{
+  const STOPS = [0.883, 2.517, 4.983, 6.35, 7.717, 9.117, 10.683, 12.483, 14.75, 16.35, 18.25, 19.783, 21.15, 22.917, 24.65, 25.817, 27.883, 29.417, 29.817, 31.083, 32.75, 34.383, 35.95, 37.55, 38.883, 41.183, 42.383, 44.017, 45.617, 47.183, 49.317, 51.183, 52.917, 54.317, 55.883, 57.783, 59.283, 60.917, 62.683, 64.05, 65.95, 68.65, 71.783, 74.05, 75.95, 77.683, 82.483, 85.183, 87.183, 91.183, 93.117, 95.417, 97.617, 100.75, 103.083, 105.117, 107.15, 109.083, 116.817, 119.217, 123.217, 125.683, 127.817, 130.183, 132.017, 134.95, 136.75, 139.683, 141.517, 143.183, 144.483, 146.517, 149.05, 151.85, 153.583, 155.75, 157.817, 159.917, 163.283, 165.05, 167.117, 169.583, 172.45, 174.583, 176.317, 181.45, 184.217, 187.317, 189.317, 191.35, 192.683, 194.083, 194.55, 195.617, 197.583, 199.05, 200.317, 201.45, 203.317, 204.783, 205.217, 207.25, 208.95, 209.383, 211.317, 213.45, 216.183, 217.883, 220.583, 222.983, 225.65, 228.283, 228.883, 231.517, 234.683, 237.017, 239.117, 243.25, 244.483, 246.383, 248.783, 250.85, 252.417, 253.75, 255.117, 257.15];
+  const v = document.getElementById('v');
+  const stage = document.getElementById('stage');
+  let i = 0, target = null, raf = null;
+
+  function show() {
+    document.getElementById('count').textContent = 'Step ' + (i + 1) + ' of ' + STOPS.length;
+    document.getElementById('fill').style.width = ((i + 1) / STOPS.length * 100) + '%';
+  }
+  function watch() {
+    if (target !== null && v.currentTime >= target) {
+      v.pause(); v.currentTime = target; target = null; raf = null; return;
+    }
+    raf = requestAnimationFrame(watch);
+  }
+  function jump(k) {
+    if (raf) { cancelAnimationFrame(raf); raf = null; }
+    target = null; v.pause();
+    i = k; v.currentTime = STOPS[i]; show();
+  }
+  function next() {
+    if (target !== null) { jump(i); return; }          // still animating: finish this step at once
+    if (i >= STOPS.length - 1) return;
+    i += 1; target = STOPS[i]; show();
+    const p = v.play(); if (p && p.catch) p.catch(() => jump(i));
+    raf = requestAnimationFrame(watch);
+  }
+  function back() { if (i > 0) jump(i - 1); else jump(0); }
+  function fullscreen() {
+    try {
+      if (document.fullscreenElement) document.exitFullscreen();
+      else if (stage.requestFullscreen) stage.requestFullscreen();
+      else if (v.webkitEnterFullscreen) v.webkitEnterFullscreen();
+    } catch (e) {}
+  }
+
+  document.getElementById('next').addEventListener('click', next);
+  document.getElementById('back').addEventListener('click', back);
+  document.getElementById('restart').addEventListener('click', () => jump(0));
+  document.getElementById('fs').addEventListener('click', fullscreen);
+  stage.addEventListener('click', next);
+  document.addEventListener('keydown', e => {
+    if (['ArrowRight', ' ', 'PageDown', 'Enter'].includes(e.key)) { e.preventDefault(); next(); }
+    else if (['ArrowLeft', 'PageUp', 'Backspace'].includes(e.key)) { e.preventDefault(); back(); }
+    else if (e.key === 'Home') jump(0);
+    else if (e.key === 'f' || e.key === 'F') fullscreen();
+  });
+  if (v.readyState >= 1) jump(0); else v.addEventListener('loadedmetadata', () => jump(0), { once: true });
+  show();
+}
+</script>
+</body>
+</html>
